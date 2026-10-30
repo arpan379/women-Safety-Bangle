@@ -248,8 +248,9 @@ women-safety-bangle/
 ├── README.md
 ├── LICENSE
 ├── pin_connection.md
+├── Circuit_Diagram.png
 ├── BOM
-└── WomenSafetyBangle.ino
+└── WomenSafetyBangle
 ```
 
 ### File Description
@@ -259,8 +260,10 @@ women-safety-bangle/
 | `README.md` | Project overview, features, hardware requirements, power architecture and instructions. |
 | `LICENSE` | MIT License for the project. |
 | `pin_connection.md` | Detailed hardware pin connections, power connections and UART wiring. |
+| `Circuit_Diagram.png` |	Circuit diagram showing the complete hardware connections. |
 | `BOM` | Bill of Materials containing the component list and quantities. |
-| `WomenSafetyBangle.ino` | Main Arduino program for GPS tracking, emergency SMS and automatic calling. |
+| `WomenSafetyBangle` | Main Arduino program for GPS tracking, emergency SMS and automatic calling. |
+
 
 ## 12. Limitations
 
