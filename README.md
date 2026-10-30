@@ -12,8 +12,8 @@ The device is designed to provide emergency assistance through an SOS push butto
 - **Google Maps Integration:** Generates a clickable Google Maps link using GPS coordinates.
 - **Automatic Emergency Call:** Calls the predefined emergency contact after sending the SMS.
 - **Rechargeable Battery:** Uses a 3.7V Li-Po battery with a TP4056 charging module.
-- **Dedicated GSM Power Supply:** Uses a separate 4V regulator for the SIM900A.
-- **UART Logic-Level Conversion:** Uses a 3.3V-to-5V bidirectional logic-level converter for communication between the Arduino and GSM module, subject to UART compatibility.
+- **5V Power Distribution:** Uses a 5V boost converter after the TP4056 charging module to provide a common 5V power rail for the Arduino Nano, GPS module, and GSM module.
+- **Direct GSM UART Connection:** Connects the GSM module's `TX5V` and `RX5V` pins directly to the Arduino Nano.
 
 ## Hardware Components
 
@@ -24,52 +24,44 @@ The device is designed to provide emergency assistance through an SOS push butto
 | NEO-6M GPS module | GPS location tracking |
 | 3.7V 5000mAh Li-Po battery | Main power source |
 | TP4056 charging module | Battery charging and protection |
-| 4V voltage regulator | Dedicated power supply for SIM900A |
-| 3.3V-to-5V bidirectional TTL logic-level converter | UART communication |
+| 5V boost converter | Converts the battery/charger output into the system's 5V power rail |
 | Push button | Emergency activation |
 | Connecting wires | Electrical connections |
 
-**Note:** This design does not include a 5V boost converter. The Arduino and GPS supply must be compatible with the variable Li-Po battery voltage. See the power supply section before assembling the circuit.
+**Note:** The 5V boost converter is connected between the TP4056 charging module output and the common 5V power rail. This rail supplies the Arduino Nano, NEO-6M GPS module, and SIM900A GSM module.
 
 ## System Architecture
 
 ### 1. Power Supply Architecture
 
-The project uses a single rechargeable Li-Po battery connected to a TP4056 charging module. The battery output is distributed into two branches:
-
-- **Arduino and GPS branch:** Supplied from the battery output, provided that the particular Arduino and GPS boards support the battery's full voltage range. A standard 5V Arduino Nano generally needs an appropriate regulated supply.
-- **GSM branch:** Supplied through a dedicated 4V regulator before reaching the SIM900A.
+The project uses a single rechargeable Li-Po battery connected to a TP4056 charging module. The TP4056 output is connected to a 5V boost converter. The boost converter output forms one common 5V power rail that supplies all three main modules: Arduino Nano, NEO-6M GPS, and SIM900A GSM.
 
 ```text
-              3.7V Li-Po Battery
+             3.7V Li-Po Battery
                       |
+                   TP4056
+               Charging Module
                       |
-              +---------------+
-              |     TP4056    |
-              | Charging      |
-              | Module        |
-              +---------------+
-                 B+       B-
-                  |        |
-                  |        |
-                 Battery Connections
+                OUT+ / OUT-
+                      |
+                5V Boost Converter
+                 IN+       IN-
+                  |         |
+                 OUT+      OUT-
+                   |        |
+              +----+--------+----+
+              |        5V Rail   |
+              |         GND      |
+          +---+---+-----+-----+---+
+          |       |           |
+       Arduino  NEO-6M     SIM900A
+        Nano     GPS         GSM
+         5V      VCC         VCC
 
-                 OUT+    OUT-
-                   |       |
-             +-----+-------+------+
-             |                    |
-             |                    |
-       Arduino/GPS            4V Regulator
-       Supply Branch               |
-             |                  SIM900A
-       Arduino Nano
-             |
-          NEO-6M*
-          
-          Common GND
+       All module grounds share common GND
 ```
 
-*The Arduino and GPS must receive a voltage within their specified operating ranges. A direct battery connection is permitted only if both boards support the complete Li-Po voltage range.*
+The Arduino Nano, GPS module, and GSM module are powered from the common 5V rail.
 
 ### TP4056 Connections
 
@@ -77,82 +69,37 @@ The project uses a single rechargeable Li-Po battery connected to a TP4056 charg
 |---|---|
 | B+ | Li-Po battery positive |
 | B- | Li-Po battery negative |
-| OUT+ | Positive supply branch for Arduino/GPS and 4V regulator |
+| OUT+ | 5V boost converter IN+ |
 | OUT- | Common ground |
 
-**Important:**
+**Note:** The TP4056 is the battery charging module. Its OUT+ and OUT- terminals feed the input of the 5V boost converter.
 
-1. Use a TP4056 module with an appropriately rated battery protection circuit.
-2. The TP4056 is a charger, not a voltage regulator.
-3. Its output voltage follows the battery voltage and is not a fixed 3.7V.
-4. Do not connect the battery directly to the Arduino 5V pin.
-5. Check the battery, protection circuit, connectors and wiring current ratings.
-6. The TP4056 does not provide power-path management for simultaneous charging and operation.
+### 5V Power Rail Connections
 
-### Arduino Nano Power Considerations
+The output of the 5V boost converter is distributed in parallel to the 5V input of the Arduino Nano, the VCC pin of the NEO-6M GPS breakout, and the VCC/5V input of the SIM900A GSM board. Connect all module grounds to the common ground rail.
 
-A standard 5V Arduino Nano is not designed to receive a variable 3.0–4.2V Li-Po supply directly on its 5V pin.
+## 2. Common 5V Power Supply
 
-Connecting the battery to VIN may also be unsuitable because the onboard regulator typically requires a higher input voltage.
+The 5V boost converter is connected directly after the TP4056 charging module and creates the common 5V power rail.
 
-Therefore, before assembly, choose a suitable supply arrangement for your exact Nano board. If it requires regulated 5V, a regulated 5V supply is necessary even though this project version does not include a boost converter.
-
-### GPS Power Considerations
-
-Check the exact NEO-6M breakout-board specifications.
-
-- Some breakout boards accept 5V through an onboard regulator.
-- The bare GPS module requires a regulated voltage around 3.3V.
-- Do not assume that a 5V-compatible GPS breakout can operate directly from the variable battery voltage.
-- Direct battery connection is appropriate only if the board explicitly supports the full battery voltage range.
-
-## 2. GSM Power Supply
-
-The SIM900A requires a dedicated power supply because GSM transmission can cause high current peaks.
-
-| 4V Regulator Pin | Connection |
+| Connection | Destination |
 |---|---|
-| IN+ | TP4056 OUT+ |
-| IN- | TP4056 OUT- |
-| OUT+ | SIM900A power input |
-| OUT- | Common GND |
+| TP4056 OUT+ | 5V boost converter IN+ |
+| TP4056 OUT- | 5V boost converter IN- |
+| Boost converter OUT+ | Common 5V rail |
+| Boost converter OUT- | Common GND rail |
+| 5V rail | Arduino Nano 5V pin |
+| 5V rail | NEO-6M GPS VCC |
+| 5V rail | SIM900A GSM board VCC/5V input |
 
-### Power Requirements
+All three modules are powered from this same 5V rail.
 
-- Target supply: approximately 4.0V, subject to the exact SIM900A board specification.
-- Design for current bursts approaching 2A.
-- A regulator rated around 3A with good transient response is a reasonable design target.
-- Use short, sufficiently thick power wires.
-- Add a 1000µF low-ESR capacitor and a 100nF ceramic capacitor close to the GSM power input.
+## 3. GSM Communication Architecture
 
-**Important:** Check whether your SIM900A is a bare module or a carrier board. Some carrier boards have onboard regulation and may require a different input voltage.
+The GSM board's `TX5V` and `RX5V` UART pins connect directly to the Arduino Nano.
 
-## 3. Communication Architecture
-
-The Arduino Nano operates at 5V logic, while the SIM900A UART uses lower-voltage logic.
-
-A 3.3V-to-5V bidirectional logic-level converter is used for UART communication, provided the particular SIM900A board supports 3.3V logic.
-
-```text
-       Arduino Nano
-          5V Logic
-              |
-              |
-      3.3V ↔ 5V Bidirectional
-       UART Logic-Level Converter
-              |
-              |
-           SIM900A
-```
-
-Both UART signal directions must be level-shifted:
-
-- Arduino TX → converter → SIM900A RX.
-- SIM900A TX → converter → Arduino RX.
-
-**UART compatibility note:** The bare SIM900A UART operates at approximately 2.8V logic. Verify that your particular GSM breakout board accepts 3.3V logic on RXD and provides a compatible TXD output. Otherwise, use a suitable 2.8V-compatible interface.
-
-Use a converter designed for UART push-pull signals.
+- Arduino D8 (TX) → GSM `RX5V`.
+- GSM `TX5V` → Arduino D7 (RX).
 
 ## 4. Circuit Connections
 
@@ -160,34 +107,23 @@ Use a converter designed for UART push-pull signals.
 
 | NEO-6M GPS | Arduino Nano |
 |---|---|
-| VCC | Suitable regulated supply according to GPS board specification |
+| VCC | Common 5V power rail |
 | GND | GND |
 | TX | D4 |
 | RX | D3 (optional) |
 
 GPS serial communication uses the Arduino SoftwareSerial interface.
 
-### Arduino Nano to SIM900A Through TTL Converter
+### Arduino Nano to SIM900A Direct UART Connection
 
-| Arduino Nano | TTL Converter | SIM900A |
-|---|---|---|
-| 5V | HV | — |
-| GND | GND | GND |
-| D8 (TX) | High-voltage input | Low-voltage output → RXD |
-| D7 (RX) | High-voltage output | Low-voltage input ← TXD |
-| — | LV | 3.3V reference |
+| Arduino Nano | SIM900A GSM |
+|---|---|
+| D8 (TX) | RX5V |
+| D7 (RX) | TX5V |
+| 5V power rail | VCC/5V power input |
+| GND | GND |
 
-Connect the converter as follows:
-
-- **HV:** Arduino Nano 5V.
-- **LV:** Regulated 3.3V reference.
-- **GND:** Common ground.
-- **Arduino D8 (TX):** Converter high-voltage input.
-- **Converter low-voltage output:** SIM900A RXD.
-- **SIM900A TXD:** Converter low-voltage input.
-- **Converter high-voltage output:** Arduino D7 (RX).
-
-Verify that the SIM900A breakout board supports 3.3V UART logic before connecting it.
+Connect the GSM module's `TX5V` and `RX5V` pins directly to the corresponding Arduino Nano serial pins.
 
 ### Emergency Push Button
 
@@ -212,9 +148,9 @@ pinMode(2, INPUT_PULLUP);
 | D2 | Emergency push button | SOS trigger |
 | D3 | GPS RX (optional) | GPS configuration data |
 | D4 | GPS TX | GPS location data |
-| D7 | TTL converter HV output | GSM serial receive |
-| D8 | TTL converter HV input | GSM serial transmit |
-| 5V | TTL converter HV reference | Logic supply |
+| D7 | GSM `TX5V` | GSM serial receive |
+| D8 | GSM `RX5V` | GSM serial transmit |
+| 5V | Common 5V power rail | Arduino and module supply |
 | GND | Common ground | Ground reference |
 
 ## 6. Software Requirements
@@ -282,7 +218,7 @@ Expected results:
 
 ### GPS Testing
 
-1. Connect the GPS module using its specified supply voltage.
+1. Connect the GPS module to the common 5V power rail.
 2. Power the system.
 3. Place the GPS antenna outdoors with a clear view of the sky.
 4. Verify that valid latitude and longitude values are received.
@@ -290,7 +226,7 @@ Expected results:
 ### GSM Testing
 
 1. Insert a working SIM card.
-2. Power the SIM900A using its dedicated regulated supply.
+2. Power the SIM900A from the common 5V power rail.
 3. Verify network registration.
 4. Test SMS sending and calling independently.
 
